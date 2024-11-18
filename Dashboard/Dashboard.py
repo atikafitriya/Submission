@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
-all_df = pd.read_csv("C:/Users/msi modern 15/OneDrive/Dokumen/DICODING IDCamp/Project Data Analys/Dashboard/all_data.csv")
+all_df = pd.read_csv("https://raw.githubusercontent.com/atikafitriya/Submission/refs/heads/main/Dashboard/all_data.csv")
 print(all_df.head())
 
 datetime_columns = ["order_purchase_timestamp", "order_delivered_customer_date"]
@@ -27,7 +27,7 @@ max_date = all_df["order_purchase_timestamp"].max()
  
 with st.sidebar:
     # Menambahkan logo perusahaan
-    st.image("C:/Users/msi modern 15/OneDrive/Dokumen/DICODING IDCamp/Project Data Analys/Logo Brazilian E-Commerce.png")
+    st.image("https://github.com/atikafitriya/Submission/blob/72ce94a46d55108aeb875489e2789f72aa17773b/Logo%20Brazilian%20E-Commerce.png?raw=true")
     
     # Mengambil start_date & end_date dari date_input
     start_date, end_date = st.date_input(
