@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import seaborn as sns
 import streamlit as st
 from babel.numbers import format_currency
@@ -11,7 +12,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
-all_df = pd.read_csv("C:/Users/msi modern 15/Documents/DICODING IDCamp/Project Data Analys/Dashboard/all_data.csv")
+all_df = pd.read_csv("C:/Users/msi modern 15/OneDrive/Dokumen/DICODING IDCamp/Project Data Analys/Dashboard/all_data.csv")
 print(all_df.head())
 
 datetime_columns = ["order_purchase_timestamp", "order_delivered_customer_date"]
@@ -26,7 +27,7 @@ max_date = all_df["order_purchase_timestamp"].max()
  
 with st.sidebar:
     # Menambahkan logo perusahaan
-    st.image("https://github.com/dicodingacademy/assets/raw/main/logo.png")#jangan lupa ganti gambar logonya
+    st.image("C:/Users/msi modern 15/OneDrive/Dokumen/DICODING IDCamp/Project Data Analys/Logo Brazilian E-Commerce.png")
     
     # Mengambil start_date & end_date dari date_input
     start_date, end_date = st.date_input(
@@ -34,6 +35,39 @@ with st.sidebar:
         max_value=max_date,
         value=[min_date, max_date]
     ) 
+
+#Helper function shipping_duration
+def create_shipping_duration_df(df):
+    df['shipping_limit_date'] = pd.to_datetime(df['shipping_limit_date'], errors='coerce')
+    df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'], errors='coerce')
+
+    df['shipping_duration'] = (df['shipping_limit_date'] - df['order_purchase_timestamp']).dt.days
+    df['year'] = df['order_purchase_timestamp'].dt.year
+    df['month'] = df['order_purchase_timestamp'].dt.month
+    
+    order_purchase_timestamp = df.groupby(['year', 'month'])['order_purchase_timestamp'].count().reset_index()
+    order_purchase_timestamp['order_purchase_timestamp'] = pd.to_datetime(order_purchase_timestamp[['year', 'month']].assign(day=1))
+    shipping_duration = df.groupby(['year', 'month'])['shipping_duration'].mean().reset_index()
+    shipping_duration['period'] = pd.to_datetime(shipping_duration[['year', 'month']].assign(day=1))
+    
+    return shipping_duration
+
+#Helper function monthly_revenue_df
+def create_monthly_revenue_df(df):
+    df['shipping_limit_date'] = pd.to_datetime(df['shipping_limit_date'], errors='coerce')
+    if df['shipping_limit_date'].isnull().any():
+        print("Ada nilai yang tidak bisa dikonversi menjadi datetime dalam 'shipping_limit_date'.")
+
+    df['year'] = df['shipping_limit_date'].dt.year
+    df['month'] = df['shipping_limit_date'].dt.month
+
+    df['revenue'] = df['price'] + df['freight_value']
+
+    monthly_revenue = df.groupby(['year', 'month'])['revenue'].sum().reset_index()
+
+    monthly_revenue['period'] = monthly_revenue['year'].astype(str) + '-' + monthly_revenue['month'].astype(str).str.zfill(2)
+
+    return monthly_revenue
 
 #Helper function rfm_df
 def create_rfm_df(df):
@@ -54,8 +88,42 @@ def create_rfm_df(df):
 main_df = all_df[(all_df["order_purchase_timestamp"] >= str(start_date)) & 
                 (all_df["order_purchase_timestamp"] <= str(end_date))]
 rfm_df = create_rfm_df(main_df)
+monthly_revenue_df = create_monthly_revenue_df(main_df)
+shipping_duration = create_shipping_duration_df(main_df)
 
 st.header('Brazilian E-Commerce Public Dashboard:sparkles:')
+
+#Shipping Duration
+st.subheader("Shipping Duration")
+
+shipping_duration = create_shipping_duration_df(main_df)
+fig, ax = plt.subplots(figsize=(16, 8))
+sns.lineplot(x="period", y="shipping_duration", data=shipping_duration, palette=['#90CAF9'], ax=ax)
+
+ax.tick_params(axis='y', labelsize=25)
+ax.tick_params(axis='x', labelsize=25, rotation=45)
+ax.set_ylabel("Shipping Duration (days)", fontsize=30)
+ax.set_xlabel("Order Purchase Timestamp", fontsize=30)
+ax.set_title("Shipping Duration Over Time", fontsize=35)
+ax.grid(True)
+
+st.pyplot(fig)
+
+#Monthly Revenue
+st.subheader("Monthly Revenue")
+
+monthly_revenue_df = create_monthly_revenue_df(main_df)
+fig, ax = plt.subplots(figsize=(16, 8))
+sns.lineplot(x="month", y="revenue", data=monthly_revenue_df, palette=['#90CAF9'], ax=ax)
+
+ax.tick_params(axis='y', labelsize=25)
+ax.tick_params(axis='x', labelsize=25, rotation=45)
+ax.set_ylabel("Revenue", fontsize=30)
+ax.set_xlabel("Month", fontsize=30)
+ax.set_title("Monthly Revenue", fontsize=35)
+ax.grid(True)
+
+st.pyplot(fig)
 
 #Favorite payment method
 st.subheader("Favorite Payment Method")
@@ -87,7 +155,7 @@ fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(35, 15))
 
 sns.barplot(x="customer_count", y="customer_city", data=top_cities, palette=['lightblue'], ax=ax[0])
 ax[0].set_ylabel("Cities Customer", fontsize=30)
-ax[0].set_xlabel("Number of Customers", fontsize=30)
+ax[0].set_xlabel("Number of Customers", fontsize=30)sss
 ax[0].set_title("Top 5 Cities by Customer Count", loc="center", fontsize=50)
 ax[0].tick_params(axis='y', labelsize=25)
 ax[0].tick_params(axis='x', labelsize=25)
