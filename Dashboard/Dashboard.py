@@ -35,7 +35,7 @@ with st.sidebar:
         max_value=max_date,
         value=[min_date, max_date]
     ) 
-
+        
 #Helper function shipping_duration
 def create_shipping_duration_df(df):
     df['shipping_limit_date'] = pd.to_datetime(df['shipping_limit_date'], errors='coerce')
@@ -60,14 +60,19 @@ def create_monthly_revenue_df(df):
 
     df['year'] = df['shipping_limit_date'].dt.year
     df['month'] = df['shipping_limit_date'].dt.month
-
     df['revenue'] = df['price'] + df['freight_value']
-
+    
     monthly_revenue = df.groupby(['year', 'month'])['revenue'].sum().reset_index()
 
-    monthly_revenue['period'] = monthly_revenue['year'].astype(str) + '-' + monthly_revenue['month'].astype(str).str.zfill(2)
+    monthly_revenue['period'] = pd.to_datetime(monthly_revenue[['year', 'month']].assign(day=1))
+    
+    all_months = pd.date_range(start=monthly_revenue['period'].min(), end=monthly_revenue['period'].max(), freq='MS')
 
-    return monthly_revenue
+    monthly_revenue_full = pd.DataFrame({'period': all_months})
+    monthly_revenue_full = monthly_revenue_full.merge(monthly_revenue, on='period', how='left').fillna(0)
+    monthly_revenue_full['revenue'] = monthly_revenue_full['revenue'].astype(float)
+
+    return monthly_revenue_full
 
 #Helper function rfm_df
 def create_rfm_df(df):
@@ -109,12 +114,18 @@ ax.grid(True)
 
 st.pyplot(fig)
 
-#Monthly Revenue
+# Monthly Revenue
 st.subheader("Monthly Revenue")
 
 monthly_revenue_df = create_monthly_revenue_df(main_df)
+cutoff_date = pd.to_datetime("2018-10-31")
+monthly_revenue_df = monthly_revenue_df[monthly_revenue_df['period'] <= cutoff_date]
 fig, ax = plt.subplots(figsize=(16, 8))
-sns.lineplot(x="month", y="revenue", data=monthly_revenue_df, palette=['#90CAF9'], ax=ax)
+
+sns.lineplot(x="period", y="revenue", data=monthly_revenue_df, palette=['#90CAF9'], ax=ax)
+
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
 ax.tick_params(axis='y', labelsize=25)
 ax.tick_params(axis='x', labelsize=25, rotation=45)
@@ -128,6 +139,7 @@ st.pyplot(fig)
 #Favorite payment method
 st.subheader("Favorite Payment Method")
 
+payment_counts = (main_df)
 payment_counts = all_df['payment_type'].value_counts().reset_index()
 payment_counts.columns = ['payment_type', 'count']
 
@@ -155,7 +167,7 @@ fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(35, 15))
 
 sns.barplot(x="customer_count", y="customer_city", data=top_cities, palette=['lightblue'], ax=ax[0])
 ax[0].set_ylabel("Cities Customer", fontsize=30)
-ax[0].set_xlabel("Number of Customers", fontsize=30)sss
+ax[0].set_xlabel("Number of Customers", fontsize=30)
 ax[0].set_title("Top 5 Cities by Customer Count", loc="center", fontsize=50)
 ax[0].tick_params(axis='y', labelsize=25)
 ax[0].tick_params(axis='x', labelsize=25)
